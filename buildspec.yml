@@ -10,21 +10,16 @@ phases:
       - wget https://github.com/mozilla/sops/releases/download/3.0.0/sops-3.0.0.linux
       - sudo mv sops-3.0.0.linux /bin/sops
       - sudo chmod +x /bin/sops
-      - wget https://github.com/github/hub/releases/download/v2.2.9/hub-linux-amd64-2.2.9.tgz && tar -xzf hub-linux-amd64-2.2.9.tgz
-      - sudo mv hub-linux-amd64-2.2.9/bin/hub /bin
       - apt-get update
-      - sudo apt install -y openssh-server
       - sudo apt install -y openssh-client
-      - id && mkdir ~/.ssh
+      - mkdir ~/.ssh
       - echo -e $(aws ssm get-parameters --region eu-west-1 --names GithubSsh --with-decryption --query Parameters[0].Value) | tr -d '"' > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
-      - echo "Hostname github.com" >> ~/.ssh/config
+      - echo "Host github.com"  > ~/.ssh/config
+      - echo "  Hostname github.com" >> ~/.ssh/config
       - echo "  IdentityFile /root/.ssh/id_rsa" >> ~/.ssh/config
       - echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-      - echo "  User $(aws ssm get-parameters --region eu-west-1 --names GithubUser --with-decryption --query Parameters[0].Value)" >> ~/.ssh/config
-      - echo "export GITHUB_TOKEN=$(aws ssm get-parameters --region eu-west-1 --names GithubPublic --with-decryption --query Parameters[0].Value)" > /tmp/github_cred_export.txt
-      - . /tmp/github_cred_export.txt
-      - hub config --global hub.protocol https
-      - hub clone -b test-codedeploy git@github.com:alphagov/govuk-aws-data
+      - wc -l /root/.ssh/id_rsa
+      - git clone -b test-codebuild git@github.com:alphagov/govuk-aws-data.git
       - cd govuk-aws-data && sops -d data/common/test/common.secret.tfvars
       - apt-cache search source
       - apt-get install -y curl jq

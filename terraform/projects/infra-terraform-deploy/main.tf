@@ -74,7 +74,9 @@ resource "aws_iam_policy" "codebuild_policy" {
         "ssm:GetParameters"
       ],
       "Resource": [
-        "arn:aws:ssm:eu-west-1:${data.aws_caller_identity.current.account_id}:parameter/GithubPublic"
+        "arn:aws:ssm:eu-west-1:${data.aws_caller_identity.current.account_id}:parameter/GithubPublic",
+        "arn:aws:ssm:eu-west-1:${data.aws_caller_identity.current.account_id}:parameter/GithubSsh",
+        "arn:aws:ssm:eu-west-1:${data.aws_caller_identity.current.account_id}:parameter/GithubUser"
       ]
     },
     {
