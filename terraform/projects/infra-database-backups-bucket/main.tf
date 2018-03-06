@@ -13,6 +13,12 @@ variable "aws_region" {
   default     = "eu-west-1"
 }
 
+variable "aws_backup_region" {
+  type 	      = "string"
+  description = "AWS region"
+  default     = "eu-west-2"
+}
+
 variable "aws_environment" {
   type        = "string"
   description = "AWS Environment"
@@ -54,6 +60,7 @@ data "terraform_remote_state" "infra_monitoring" {
     region = "eu-west-1"
   }
 }
+
 
 resource "aws_s3_bucket" "database_backups" {
   bucket = "govuk-${var.aws_environment}-database-backups"
@@ -132,5 +139,37 @@ resource "aws_s3_bucket" "database_backups" {
     expiration {
       days = 7
     }
+  }
+  versioning {
+    enabled = true
+  }
+}
+
+# Bucket to hold the replication
+resource "aws_s3_bucket" "database_backups_replica" {
+  bucket   = "govuk-${var.aws_environment}-database-backups-replica"
+  region   = "${var.aws_backup_region}"
+
+  versioning {
+    enabled = true
+  }
+}
+
+# S3 backup replica role configuration
+data "template_file" "s3_backup_replica_assume_role_template" {
+  template = "${file("${path.module}/../../policies/s3_backup_replica_role.tpl")}"
+}
+
+# Adding backup replication role
+resource "aws_iam_role" "backup_replication_role" {
+  name               = "${var.stackname}-backup-bucket-replication-role"
+  assume_role_policy = "${data.template_file.s3_backup_replica_assume_role_template.rendered}"
+}
+
+data "template_file" ""s3_backup_replica_policy_template"" {
+  template = "${file("${path.module}/../../policies/s3_backup_replica_policy.tpl")}"
+  vars {
+    govuk_s3_bucket = "${aws_s3_bucket.database_backups.arn}"
+    govuk_s3_backup = "${aws_s3_bucket.database_backups_replica.arn}"
   }
 }
