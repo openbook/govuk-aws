@@ -15,6 +15,17 @@ node ("terraform") {
       govuk.bundleApp()
     }
 
+    stage("Check generated docs are up-to-date") {
+      sh "tools/update-docs.sh"
+
+      docsAreUpToDate = sh(script: "git diff --exit-code", returnStatus: true) == 0
+
+      if (!docsAreUpToDate) {
+        error("The documentation isn't up to date. You should run "
+          + "tools/update-docs.sh and commit the results.")
+      }
+    }
+
     stage("ADR check") {
       sh "tools/adr-check.sh"
     }
@@ -54,4 +65,3 @@ node ("terraform") {
   // Wipe the workspace
   deleteDir()
 }
-
