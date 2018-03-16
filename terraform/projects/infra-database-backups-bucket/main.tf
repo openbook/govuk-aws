@@ -52,7 +52,7 @@ provider "aws" {
 }
 
 provider "aws" {
-  alias   = "eu-london"
+  alias   = "eu_london"
   region  = "${var.aws_backup_region}"
   version = "1.0.0"
 }
@@ -179,7 +179,7 @@ resource "aws_s3_bucket" "database_backups" {
 resource "aws_s3_bucket" "database_backups_replica" {
   bucket   = "govuk-${var.aws_environment}-database-backups-replica"
   region   = "${var.aws_backup_region}"
-  provider = "aws.eu-london"
+  provider = "aws.eu_london"
 
   versioning {
     enabled = true

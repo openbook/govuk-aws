@@ -85,7 +85,7 @@ resource "aws_s3_bucket" "govuk-mirror-1" {
   }
 
   replication_configuration {
-    role = "${aws_iam_role.govuk_mirror_1_replication_role.arn}"
+    role = "${aws_iam_role.govuk-mirror-1-replication-role.arn}"
 
     rules {
       prefix = ""
@@ -110,7 +110,7 @@ resource "aws_s3_bucket" "govuk-mirror-2" {
   }
 
   logging {
-    target_bucket = "${data.terraform_remote_state.infra_monitoring.aws_logging_bucket_id}"
+    target_bucket = "${aws_s3_bucket.govuk-staging-aws-logging-london.id}"
     target_prefix = "s3/govuk-${var.aws_environment}-mirror-2/"
   }
 
@@ -131,29 +131,28 @@ resource "aws_s3_bucket_policy" "govuk_mirror_2_read_policy" {
 
 # S3 backup replica role configuration
 data "template_file" "s3_govuk_mirror_1_replication_role_template" {
-  template = "${file("${path.module}/../../policies/s3_mirror_replica_role.tpl")}"
+  template = "${file("${path.module}/../../policies/s3_govuk_mirror_1_replication_role.tpl")}"
 }
 
 # Adding backup replication role
-resource "aws_iam_role" "govuk_mirror_1_replication_role" {
+resource "aws_iam_role" "govuk-mirror-1-replication-role" {
   name               = "${var.stackname}-mirror-1-replication-role"
   assume_role_policy = "${data.template_file.s3_govuk_mirror_1_replication_role_template.rendered}"
 }
 
-data "template_file" "" s3_govuk_mirror_1_replication_policy_template "" {
-  template = "${file("${path.module}/../../policies/s3_role_replica_policy.tpl")}"
+data "template_file" "s3_govuk_mirror_1_replication_policy_template" {
+  template = "${file("${path.module}/../../policies/s3_govuk_mirror_1_replication_policy.tpl")}"
 
   vars {
-    govuk_s3_bucket = "arn:aws:s3:::${govuk-mirror-1}.bucket.arn"
-    govuk_s3_backup = "arn:aws:s3:::${govuk-mirror-2}.bucket.arn"
-    aws_account_id  = "${data.aws_caller_identity.current.account_id}"
+    govuk_mirror_1 = "${aws_s3_bucket.govuk-mirror-1.arn}"
+    govuk_mirror_2 = "${aws_s3_bucket.govuk-mirror-2.arn}"
   }
 }
 
 # Adding backup replication policy
-resource "aws_iam_policy" "govuk_mirror_1_replication_policy" {
-  name        = "govuk-${var.aws_environment}-backup-bucket-replication-policy"
-  policy      = "${data.template_file.s3_backup_replica_policy_template.rendered}"
+resource "aws_iam_policy" "govuk-mirror-1-replication-policy" {
+  name        = "govuk-${var.aws_environment}-mirror-1-replication-policy"
+  policy      = "${data.template_file.s3_govuk_mirror_1_replication_policy_template.rendered}"
   description = "Allows replication of the backup buckets"
 }
 

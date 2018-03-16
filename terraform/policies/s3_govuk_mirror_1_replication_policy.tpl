@@ -8,7 +8,7 @@
       ],
       "Effect": "Allow",
       "Resource": [
-        "${govuk-mirror-1}"
+        "${govuk_mirror_1}"
       ]
     },
     {
@@ -18,7 +18,7 @@
       ],
       "Effect": "Allow",
       "Resource": [
-        "${govuk-mirror-1}/*"
+        "${govuk_mirror_1}/*"
       ]
     },
     {
@@ -27,7 +27,7 @@
         "s3:ReplicateDelete"
       ],
       "Effect": "Allow",
-      "Resource": "${govuk-mirror-2}/*"
+      "Resource": "${govuk_mirror_2}/*"
     }
   ]
 }

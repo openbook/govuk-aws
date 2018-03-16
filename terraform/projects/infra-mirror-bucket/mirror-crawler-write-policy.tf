@@ -34,6 +34,6 @@ resource "aws_iam_user" "s3_mirrors_writer_user" {
 
 resource "aws_iam_policy_attachment" "s3_mirrors_writer_user_policy" {
   name       = "s3_mirrors_writers_user_policy_attachement"
-  users      = ["${aws_iam_user.s3_mirrors_writers_user.name}"]
+  users      = ["${aws_iam_user.s3_mirrors_writer_user.name}"]
   policy_arn = "${aws_iam_policy.s3_mirrors_writer_policy.arn}"
 }
