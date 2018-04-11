@@ -25,8 +25,7 @@ The general steps for provisioning a new environment are:
 
 * [Git](https://git-scm.com/) installed via [Xcode cli tools](http://osxdaily.com/2014/02/12/install-command-line-tools-mac-os-x/)/[brew](https://brew.sh/)
 * [Terraform = 0.11.2](https://www.terraform.io/downloads.html) installed via that link
-* [ssh-copy-id](https://www.ssh.com/ssh/copy-id) installed via `brew install ssh-copy-id`
-* [aws-cli](https://aws.amazon.com/cli) installed via `brew install awscli` or `pip install awscli`
+* [aws-cli](https://aws.amazon.com/cli) installed via `brew install awscli` or `pip install awscli`, note that Python3 is recommended to avoif UTF issues.
 
 If you've not used the aws-cli before run
 ```
@@ -36,26 +35,14 @@ to set your access id, secret and the region to use.
 
 ## Cloning the repositories
 
-You will need to have cloned the following repositories to your local machine
+You will need to have cloned the following repositories to your local machine:
 
-* [govuk-puppet](https://github.com/alphagov/govuk-puppet)
-* [govuk-secrets](https://github.com/alphagov/govuk-secrets)
-* [govuk-aws-data](https://github.com/alphagov/govuk-aws-data)
 * [govuk-aws (this one)](https://github.com/alphagov/govuk-aws)
 
 e.g.
 ```
-git clone git@github.com:alphagov/govuk-secrets.git
+git clone git@github.com:alphagov/govuk-aws.git
 ```
-
-> **NOTE: Ensure Puppet has all dependencies installed**
->
-> Follow the instructions [in the govuk-puppet repository](https://github.com/alphagov/govuk-puppet#installing)
-> to ensure that all Puppet modules and depencencies are pulled in.
->
-> If this step is not completed you may see errors when deploying about
-> missing functions
->
 
 ## Build the S3 bucket
 
@@ -113,6 +100,7 @@ The projects that need to be initially run in this way are:
 7. `infra-security-groups`
 8. `infra-database-backups-bucket`
 9. `infra-artefact-bucket`
+10. `infra-public-services`
 
 ### Creating backend files for a new stack
 
@@ -128,44 +116,10 @@ region  = "<region>"
 
 ## Build the Puppet Master
 
-Puppet master is provisioned similarly to other Terraform projects but you'll need to make sure that you set the `ssh_public_key` value in `common/<environment>/<stack name>.tfvars` to the public portion of a key that you have the private portion of.
+As of April 2018, the puppetmaster is built equivalent to any other machine. Be
+aware that a bootstrap script ('tools/govuk_puppetmaster_bootstrap.sh) specific to it is run from the launch configuration via terraform/userdata/20-puppetmaster.
 
-When you run the Terraform below, explicitly setting the `enable_bootstrap` variable will create an ELB which will allow you to SSH to the Puppetmaster.
-
-```
-# Make sure STACKNAME, ENVIRONMENT and DATA_DIR are set, or use the -s, -e and -d options with the script to pass these values
-tools/build-terraform-project.sh -c plan -p app-puppetmaster -- -var 'enable_bootstrap=1'
-...terraform output...
-tools/build-terraform-project.sh -c apply -p app-puppetmaster -- -var 'enable_bootstrap=1'
-...terraform output...
-```
-
-To test this you should be able to SSH to the puppet master using the Terraform output of the last command:
-```
-...Other Terraform output...
-
-Outputs:
-
-puppetmaster_bootstrap_elb_dns_name = <stack name>-puppetmaster-bootstrap-1234567890.eu-west-1.elb.amazonaws.com
-puppetmaster_internal_elb_dns_name = internal-<stack name>-puppetmaster-0987654321.eu-west-1.elb.amazonaws.com
-service_dns_name = puppet.<stack name>.<environment>.govuk-internal.digital
-
-export PUPPETMASTER_ELB=<stack name>-puppetmaster-bootstrap-1234567890.eu-west-1.elb.amazonaws.com
-ssh ubuntu@$PUPPETMASTER_ELB
-```
-
-## Build infra-public-services
-
-Before creating an application machines, build the `infra-public-services` project. This creates a set of CNAME DNS records that point the top level internal domain
-to the current live stack service.
-
-All services rely on the top level DNS records, so they must exist before we deploy any instances.
-
-```
-tools/build-terraform-project.sh -c apply -p infra-public-services
-```
-
-## Deploy the Puppet code and secrets
+## Credentials present in the AWS SSM parameter store
 
 The GPG key for Integration is kept in the 2ndline password store under
 `hiera-eyaml-gpg/integration/private-key`. Decrypt it and save it to a file.
@@ -175,22 +129,27 @@ You will also need to ensure the private part of the SSH key exists in
 
 `infra/govuk-aws-account/aws-migration-integration-keypair`
 
-Save it in `~/.ssh/aws-migration-integration-ssh_id.rsa` and ensure permissions
-are set to `0600`. Add it to your SSH agent with `ssh-add
-~/.ssh/aws-migration-integration-ssh_id.rsa`, so the script below can use it
-with `ssh-copy-id`.
-
-Now run these commands to initialise the puppet master:
-```
-cd tools
-bash -x ./aws-push-puppet.sh -e ${ENVIRONMENT} \
-                             -g <path to the gpg key> \
-                             -p <path to puppet repo> \
-                             -d <path to govuk-secrets repo> \
-                             -t $PUPPETMASTER_ELB
-ssh ubuntu@$PUPPETMASTER_ELB
-> sudo ./aws-copy-puppet-setup.sh -e integration -s <stack name>
-```
+The bootstrap script for Puppetmaster
+('tools/govuk_puppetmaster_bootstrapt.sh') expects to find these two keys in the AWS SSM
+parameter store of the aws admin user for the respective environment: 
+ 
+An SSH private key with RO access to the govuk-secrets repository: 
+ 
+* ```govuk_secrets_clone_ssh```
+ 
+And a GPG key to decrypt the govuk-secrets repository: 
+ 
+* ```govuk_staging_secrets_1_of_2_gpg``` 
+* ```govuk_staging_secrets_2_of_2_gpg``` 
+ 
+This is cut in two due to current restrictions of the "SecretString" encrypted parameter
+type which is limited to 4096 characters. The fields are to contain the key payload only, header and footer:  
+-----BEGIN PGP PRIVATE KEY BLOCK-----  
+Version: GnuPG v1.4.11 (GNU/Linux)  
+-----END PGP PRIVATE KEY BLOCK-----  
+are added by the bootstrap script. This is due to newline characters being
+replaced with whitespaces ("space") in the parameter store, which is currently
+fixed in the bootstrap script by ```sed -e s/' '/'\n'/g```.
 
 Test that the Puppetmaster works with `puppet apply -e "notify {'hello world':}"`:
 
@@ -210,19 +169,6 @@ deleted the Puppetmaster's ELB.
 tools/build-terraform-project.sh -p app-jumpbox -c plan
 ...terraform output...
 tools/build-terraform-project.sh -p app-jumpbox -c apply
-```
-
-## Remove the Puppetmaster bootstrap ELB
-
-Run the Terraform again for the Puppetmaster, and removing the variable should
-destroy the load balancer and security groups, leaving access to the
-environment via SSH only available via the jumpbox.
-
-```
-tools/build-terraform-project.sh -c plan -p app-puppetmaster
-...terraform output...
-tools/build-terraform-project.sh -c apply -p app-puppetmaster
-...terraform output...
 ```
 
 ## Build the deploy Jenkins
