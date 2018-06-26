@@ -174,6 +174,20 @@ module "alarms-elb-logs-cdn-external" {
   healthyhostcount_threshold     = "1"
 }
 
+resource "aws_s3_bucket" "logs_cdn_legacy_data" {
+  bucket = "govuk-cdn-logs-monitor-${var.aws_environment}-legacy-data"
+
+  tags {
+    Name            = "govuk-cdn-logs-monitor-${var.aws_environment}-legacy-data"
+    aws_environment = "${var.aws_environment}"
+  }
+
+  logging {
+    target_bucket = "${data.terraform_remote_state.infra_monitoring.aws_logging_bucket_id}"
+    target_prefix = "s3/govuk-cdn-logs-monitor-${var.aws_environment}-legacy-data/"
+  }
+}
+
 # Outputs
 # --------------------------------------------------------------
 
