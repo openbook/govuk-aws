@@ -1,0 +1,4 @@
+bucket  = "govuk-terraform-steppingstone-test"
+key     = "govuk/fastly-logs.tfstate"
+encrypt = true
+region  = "eu-west-1"
