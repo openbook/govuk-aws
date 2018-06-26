@@ -56,6 +56,73 @@ data "template_file" "logs_writer_policy_template" {
   }
 }
 
+resource "aws_glue_catalog_database" "fastly_logs" {
+  name = "FastlyLogs"
+}
+
+resource "aws_iam_role" "glue" {
+  name        = "AWSGlueServiceRole-fastly-logs"
+  description = "Role to allow glue access to S3 for fastly logs"
+  path        = "/service-role/"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "glue.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "glue_service" {
+    role = "${aws_iam_role.glue.id}"
+    policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+}
+
+resource "aws_iam_role_policy" "fastly_logs_policy" {
+  name = "fastly-logs-${var.aws_environment}-logs-glue-policy"
+  role = "${aws_iam_role.glue.id}"
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:*"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${aws_s3_bucket.fastly_logs.id}"
+        "arn:aws:s3:::${aws_s3_bucket.fastly_logs.id}/*"
+      ]
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_glue_crawler" "govuk" {
+  database_name = "${aws_glue_catalog_database.fastly_logs.name}"
+  name          = "Fastly logs for GOV.UK"
+  role          = "${aws_iam_role.fastly_logs.name}"
+  schedule      = "30 0 * * ? *"
+
+  s3_target {
+    path = "s3://${aws_s3_bucket.fastly_govuk.bucket}/govuk"
+  }
+}
+
+# Then similar crawlers for bouncer and assets
+
 # Outputs
 # --------------------------------------------------------------
 
