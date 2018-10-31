@@ -64,7 +64,7 @@ resource "aws_security_group_rule" "bouncer-elb_ingress_fastly_http" {
   from_port         = 80
   protocol          = "tcp"
   security_group_id = "${aws_security_group.bouncer_elb.id}"
-  cidr_blocks       = ["${data.fastly_ip_ranges.fastly.cidr_blocks}", "${var.office_ips}"]
+  cidr_blocks       = ["${data.fastly_ip_ranges.fastly.cidr_blocks}", "${var.office_ips}", "${var.nat_static_eips}"]
 }
 
 resource "aws_security_group_rule" "bouncer-elb_ingress_traffic-replay_http" {
@@ -82,7 +82,7 @@ resource "aws_security_group_rule" "bouncer-elb_ingress_fastly_https" {
   from_port         = 443
   protocol          = "tcp"
   security_group_id = "${aws_security_group.bouncer_elb.id}"
-  cidr_blocks       = ["${data.fastly_ip_ranges.fastly.cidr_blocks}", "${var.office_ips}"]
+  cidr_blocks       = ["${data.fastly_ip_ranges.fastly.cidr_blocks}", "${var.office_ips}", "${var.nat_static_eips}"]
 }
 
 resource "aws_security_group_rule" "bouncer-elb_egress_any_any" {
