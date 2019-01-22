@@ -38,6 +38,18 @@ variable "role_admin_policy_arns" {
   default     = []
 }
 
+variable "role_dns_user_arns" {
+  type        = "list"
+  description = "List of ARNS of external users that can assume the role"
+  default     = []
+}
+
+variable "role_dns_policy_arns" {
+  type        = "list"
+  description = "List of ARNs of policies to attach to the role"
+  default     = []
+}
+
 variable "role_platformhealth_poweruser_user_arns" {
   type        = "list"
   description = "List of ARNs of external users that can assume the role"
@@ -111,6 +123,13 @@ module "role_poweruser" {
   role_name        = "govuk-powerusers"
   role_user_arns   = ["${var.role_poweruser_user_arns}"]
   role_policy_arns = ["${var.role_poweruser_policy_arns}"]
+}
+
+module "role_dns" {
+  source           = "../../modules/aws/iam/role_user"
+  role_name        = "govuk-dns"
+  role_user_arns   = ["${var.role_dns_user_arns}"]
+  role_policy_arns = ["${var.role_dns_policy_arns}"]
 }
 
 module "role_user" {
